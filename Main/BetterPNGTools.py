@@ -5,7 +5,8 @@ import sv_ttk
 import os
 import colorsys
 import random
-
+import io
+import base64
 
 class PNGToolsApp(ttk.Frame):
     def __init__(self, parent):
@@ -18,13 +19,13 @@ class PNGToolsApp(ttk.Frame):
             {"title": "Change PNG Color Tone", "description": "Quickly replace all colors in a PNG with a single color tone.", "image": "image3.png", "function": self.change_color_tone},
             {"title": "Change PNG Opacity", "description": "Quickly create a translucent or semi-transparent PNG.", "image": "image4.png", "function": self.change_opacity},
             {"title": "Add Noise to a PNG", "description": "Quickly add noisy pixels to your PNG image.", "image": "image5.png", "function": self.add_noise},
-            {"title": "Compress a PNG", "description": "Quickly make a PNG image smaller and reduce its size.", "image": "image6.png"},
-            {"title": "Convert PNG to JPG", "description": "Quickly convert a PNG graphics file to a JPEG graphics file.", "image": "image7.png"},
-            {"title": "Convert JPG to PNG", "description": "Quickly convert a JPEG graphics file to a PNG graphics file.", "image": "image8.png"},
-            {"title": "Convert WebP to PNG", "description": "Quickly convert a WebP image to a PNG", "image": "image9.png"},
-            {"title": "Convert PNG to WebP", "description": "Quickly convert a PNG image to a WebP image.", "image": "image10.png"},
-            {"title": "Convert SVG to PNG", "description": "Quickly convert an SVG file to a PNG image.", "image": "image11.png"},
-            {"title": "Convert PNG to Base64", "description": "Quickly convert a PNG image to base64 encoding.", "image": "image12.png"},
+            {"title": "Compress a PNG", "description": "Quickly make a PNG image smaller and reduce its size.", "image": "image6.png", "function": self.compress_png},
+            {"title": "Convert PNG to JPG", "description": "Quickly convert a PNG graphics file to a JPEG graphics file.", "image": "image7.png", "function": self.convert_png_to_jpg},
+            {"title": "Convert JPG to PNG", "description": "Quickly convert a JPEG graphics file to a PNG graphics file.", "image": "image8.png", "function": self.convert_jpg_to_png},
+            {"title": "Convert WebP to PNG", "description": "Quickly convert a WebP image to a PNG", "image": "image9.png", "function": self.convert_webp_to_png},
+            {"title": "Convert PNG to WebP", "description": "Quickly convert a PNG image to a WebP image.", "image": "image10.png", "function": self.convert_png_to_webp},
+            {"title": "Convert SVG to PNG", "description": "Quickly convert an SVG file to a PNG image.", "image": "image11.png", "function": self.convert_svg_to_png},
+            {"title": "Convert PNG to Base64", "description": "Quickly convert a PNG image to base64 encoding.", "image": "image12.png", "function": self.convert_png_to_base64},
             {"title": "Convert Base64 to PNG", "description": "Quickly convert a base64-encoded image to PNG.", "image": "image13.png"},
             {"title": "PNG Viewer", "description": "Quickly open and view a PNG and its components in your browser.", "image": "image14.png"},
             {"title": "Preview a PNG on a Colorful Background", "description": "Quickly show how a PNG looks on various background colors.", "image": "image15.png"},
@@ -68,8 +69,13 @@ class PNGToolsApp(ttk.Frame):
         self.tools_canvas.create_window((0, 0), window=self.tools_list, anchor=tk.NW)
         self.tools_list.bind("<Configure>", lambda e: self.tools_canvas.configure(scrollregion=self.tools_canvas.bbox("all")))
 
+        self.tools_canvas.bind("<MouseWheel>", self._on_mousewheel)
+
         for tool in self.tools:
             self.create_tool_item(tool)
+
+    def _on_mousewheel(self, event):
+        self.tools_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     def create_tool_item(self, tool):
         frame = ttk.Frame(self.tools_list, style="Card.TFrame", padding=5)
@@ -189,6 +195,12 @@ class PNGToolsApp(ttk.Frame):
             self.percentage_entry = ttk.Entry(color_frame, width=5)
             self.percentage_entry.grid(row=0, column=1, padx=5)
             self.percentage_entry.insert(0, "100")
+
+        elif tool["title"] == "Compress a PNG":
+            ttk.Label(color_frame, text="Compression level:").grid(row=0, column=0, padx=5, pady=5)
+            self.compression_level = ttk.Scale(color_frame, from_=0, to=9, orient=tk.HORIZONTAL)
+            self.compression_level.grid(row=0, column=1, padx=5, pady=5)
+            self.compression_level.set(6)  # Default compression level
 
         elif tool["title"] == "Add Noise to a PNG":
             self.noise_type = tk.StringVar(value="random")
@@ -370,7 +382,7 @@ class PNGToolsApp(ttk.Frame):
             
             if noise_type == "random":
                 new_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
-            else:
+            else:  # similar
                 r, g, b, a = pixels[x, y]
                 new_r = max(0, min(255, int(r + (random.random() * 2 - 1) * 255 * color_similarity)))
                 new_g = max(0, min(255, int(g + (random.random() * 2 - 1) * 255 * color_similarity)))
@@ -381,10 +393,120 @@ class PNGToolsApp(ttk.Frame):
         
         return img
 
+    def compress_png(self):
+        if hasattr(self, 'original_image'):
+            compression_level = int(self.compression_level.get())
+            self.processed_original = self.apply_compression(self.original_image, compression_level)
+            preview_result = self.apply_compression(self.preview_image, compression_level)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_compression(self, image, compression_level):
+        img = image.convert("RGB")
+        output = io.BytesIO()
+        img.save(output, format="PNG", optimize=True, quality=95-compression_level*10)
+        output.seek(0)
+        return Image.open(output)
+
+    def convert_png_to_jpg(self):
+        self.current_operation = "convert_png_to_jpg"
+        if hasattr(self, 'original_image'):
+            self.processed_original = self.apply_png_to_jpg(self.original_image)
+            preview_result = self.apply_png_to_jpg(self.preview_image)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_png_to_jpg(self, image):
+        return image.convert("RGB")
+
+    def convert_jpg_to_png(self):
+        self.current_operation = "convert_jpg_to_png"
+        if hasattr(self, 'original_image'):
+            self.processed_original = self.apply_jpg_to_png(self.original_image)
+            preview_result = self.apply_jpg_to_png(self.preview_image)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_jpg_to_png(self, image):
+        return image.convert("RGBA")
+
+    def convert_webp_to_png(self):
+        self.current_operation = "convert_webp_to_png"
+        if hasattr(self, 'original_image'):
+            self.processed_original = self.apply_webp_to_png(self.original_image)
+            preview_result = self.apply_webp_to_png(self.preview_image)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_webp_to_png(self, image):
+        return image.convert("RGBA")
+
+    def convert_png_to_webp(self):
+        self.current_operation = "convert_png_to_webp"
+        if hasattr(self, 'original_image'):
+            self.processed_original = self.apply_png_to_webp(self.original_image)
+            preview_result = self.apply_png_to_webp(self.preview_image)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_png_to_webp(self, image):
+        output = io.BytesIO()
+        image.save(output, format="WEBP")
+        output.seek(0)
+        return Image.open(output)
+
+    def convert_svg_to_png(self):
+        self.current_operation = "convert_svg_to_png"
+        if hasattr(self, 'original_image'):
+            self.processed_original = self.apply_svg_to_png(self.original_image)
+            preview_result = self.apply_svg_to_png(self.preview_image)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_svg_to_png(self, image):
+        return image.convert("RGBA")
+
+    def convert_png_to_base64(self):
+        self.current_operation = "convert_png_to_base64"
+        if hasattr(self, 'original_image'):
+            base64_string = self.apply_png_to_base64(self.original_image)
+            text_widget = tk.Text(self.after_frame, wrap=tk.WORD)
+            text_widget.insert(tk.END, base64_string)
+            text_widget.pack(expand=True, fill=tk.BOTH)
+
+    def apply_png_to_base64(self, image):
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode()
+
+
     def save_image(self):
-        save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png")])
-        if save_path and hasattr(self, 'processed_original'):
-            self.processed_original.save(save_path)
+        if not hasattr(self, 'processed_original'):
+            return
+
+        file_types = [
+            ("PNG files", "*.png"),
+            ("JPEG files", "*.jpg"),
+            ("WebP files", "*.webp"),
+        ]
+        
+        if hasattr(self, 'current_operation'):
+            if self.current_operation == "convert_png_to_jpg":
+                default_extension = ".jpg"
+                file_types = [("JPEG files", "*.jpg")] + file_types
+            elif self.current_operation == "convert_png_to_webp":
+                default_extension = ".webp"
+                file_types = [("WebP files", "*.webp")] + file_types
+            else:
+                default_extension = ".png"
+        else:
+            default_extension = ".png"
+
+        save_path = filedialog.asksaveasfilename(defaultextension=default_extension, filetypes=file_types)
+        
+        if save_path:
+            file_extension = os.path.splitext(save_path)[1].lower()
+            
+            if file_extension == '.png':
+                self.processed_original.save(save_path, format="PNG")
+            elif file_extension == '.jpg':
+                self.processed_original.convert("RGB").save(save_path, format="JPEG")
+            elif file_extension == '.webp':
+                self.processed_original.save(save_path, format="WebP")
 
     def filter_tools(self, *args):
         search_term = self.search_var.get().lower()
