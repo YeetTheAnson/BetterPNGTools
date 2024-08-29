@@ -4,6 +4,8 @@ from PIL import Image, ImageTk
 import sv_ttk
 import os
 import colorsys
+import random
+
 
 class PNGToolsApp(ttk.Frame):
     def __init__(self, parent):
@@ -15,11 +17,23 @@ class PNGToolsApp(ttk.Frame):
             {"title": "Change Colors in a PNG", "description": "Quickly swap colors in a PNG image.", "image": "image2.png", "function": self.change_colors},
             {"title": "Change PNG Color Tone", "description": "Quickly replace all colors in a PNG with a single color tone.", "image": "image3.png", "function": self.change_color_tone},
             {"title": "Change PNG Opacity", "description": "Quickly create a translucent or semi-transparent PNG.", "image": "image4.png", "function": self.change_opacity},
-            {"title": "Add Noise to a PNG", "description": "Quickly add noisy pixels (white noise) to your PNG image.", "image": "image5.png"},
+            {"title": "Add Noise to a PNG", "description": "Quickly add noisy pixels to your PNG image.", "image": "image5.png", "function": self.add_noise},
             {"title": "Compress a PNG", "description": "Quickly make a PNG image smaller and reduce its size.", "image": "image6.png"},
             {"title": "Convert PNG to JPG", "description": "Quickly convert a PNG graphics file to a JPEG graphics file.", "image": "image7.png"},
             {"title": "Convert JPG to PNG", "description": "Quickly convert a JPEG graphics file to a PNG graphics file.", "image": "image8.png"},
             {"title": "Convert WebP to PNG", "description": "Quickly convert a WebP image to a PNG", "image": "image9.png"},
+            {"title": "Convert PNG to WebP", "description": "Quickly convert a PNG image to a WebP image.", "image": "image10.png"},
+            {"title": "Convert SVG to PNG", "description": "Quickly convert an SVG file to a PNG image.", "image": "image11.png"},
+            {"title": "Convert PNG to Base64", "description": "Quickly convert a PNG image to base64 encoding.", "image": "image12.png"},
+            {"title": "Convert Base64 to PNG", "description": "Quickly convert a base64-encoded image to PNG.", "image": "image13.png"},
+            {"title": "PNG Viewer", "description": "Quickly open and view a PNG and its components in your browser.", "image": "image14.png"},
+            {"title": "Preview a PNG on a Colorful Background", "description": "Quickly show how a PNG looks on various background colors.", "image": "image15.png"},
+            {"title": "Remove the Alpha Channel from PNG", "description": "Quickly remove the alpha channel and transparency from a PNG.", "image": "image16.png"},
+            {"title": "Fill the Alpha Channel in a PNG", "description": "Quickly fill the alpha channel in a PNG with a specific color.", "image": "image17.png"},
+            {"title": "Replace the Alpha Channel in a PNG", "description": "Quickly replace the alpha channel in a PNG with opaque pixels.", "image": "image18.png"},
+            {"title": "Extract Alpha Channel from a PNG", "description": "Quickly extract transparent areas (alpha channel) from a PNG.", "image": "image19.png"},
+            {"title": "Analyze a PNG", "description": "Quickly get detailed information about a PNG file.", "image": "image20.png"},
+            {"title": "Find PNG File Size", "description": "Quickly calculate the file size of a PNG image in bytes or kilobytes.", "image": "image21.png"},
         ]
 
         self.images = []
@@ -147,14 +161,16 @@ class PNGToolsApp(ttk.Frame):
         self.after_frame.grid_propagate(False)
         color_frame = ttk.Frame(container)
         color_frame.grid(row=1, column=0, columnspan=2, pady=10)
-        ttk.Label(color_frame, text="Color:").grid(row=0, column=0, padx=5)
-        self.color_entry = ttk.Entry(color_frame, width=10)
-        self.color_entry.grid(row=0, column=1, padx=5)
-        ttk.Button(color_frame, text="Pick Color", command=self.pick_color).grid(row=0, column=2, padx=5)
-        ttk.Label(color_frame, text="Closeness %:").grid(row=0, column=3, padx=5)
-        self.percentage_entry = ttk.Entry(color_frame, width=5)
-        self.percentage_entry.grid(row=0, column=4, padx=5)
-        self.percentage_entry.insert(0, "10")
+
+        if tool["title"] in ["Make a PNG Transparent", "Change Colors in a PNG"]:
+            ttk.Label(color_frame, text="Color:").grid(row=0, column=0, padx=5)
+            self.color_entry = ttk.Entry(color_frame, width=10)
+            self.color_entry.grid(row=0, column=1, padx=5)
+            ttk.Button(color_frame, text="Pick Color", command=self.pick_color).grid(row=0, column=2, padx=5)
+            ttk.Label(color_frame, text="Closeness %:").grid(row=0, column=3, padx=5)
+            self.percentage_entry = ttk.Entry(color_frame, width=5)
+            self.percentage_entry.grid(row=0, column=4, padx=5)
+            self.percentage_entry.insert(0, "10")
 
         if tool["title"] == "Change Colors in a PNG":
             ttk.Label(color_frame, text="New Color:").grid(row=1, column=0, padx=5, pady=5)
@@ -174,18 +190,29 @@ class PNGToolsApp(ttk.Frame):
             self.percentage_entry.grid(row=0, column=1, padx=5)
             self.percentage_entry.insert(0, "100")
 
-        apply_button = ttk.Button(container, text="Apply", style="Accent.TButton", command=lambda: tool["function"]())
-        apply_button.grid(row=2, column=0, columnspan=2, pady=10)
-        save_button = ttk.Button(container, text="Save", style="Accent.TButton", command=self.save_image)
-        save_button.grid(row=3, column=0, columnspan=2, pady=10)
-        container.grid_columnconfigure(0, weight=1)
-        container.grid_columnconfigure(1, weight=1)
-
-        if tool["title"] == "Change Colors in a PNG":
-            ttk.Label(color_frame, text="New Color:").grid(row=1, column=0, padx=5, pady=5)
-            self.new_color_entry = ttk.Entry(color_frame, width=10)
-            self.new_color_entry.grid(row=1, column=1, padx=5, pady=5)
-            ttk.Button(color_frame, text="Pick New Color", command=lambda: self.pick_color(True)).grid(row=1, column=2, padx=5, pady=5)
+        elif tool["title"] == "Add Noise to a PNG":
+            self.noise_type = tk.StringVar(value="random")
+            ttk.Radiobutton(color_frame, text="Random color noise", variable=self.noise_type, value="random").grid(row=0, column=0, padx=5, pady=5)
+            ttk.Radiobutton(color_frame, text="Similar pixel noise", variable=self.noise_type, value="similar").grid(row=0, column=1, padx=5, pady=5)
+            
+            ttk.Label(color_frame, text="Noise level %:").grid(row=1, column=0, padx=5, pady=5)
+            self.noise_level_entry = ttk.Entry(color_frame, width=5)
+            self.noise_level_entry.grid(row=1, column=1, padx=5, pady=5)
+            self.noise_level_entry.insert(0, "10")
+            
+            ttk.Label(color_frame, text="Color similarity %:").grid(row=2, column=0, padx=5, pady=5)
+            self.color_similarity_entry = ttk.Entry(color_frame, width=5)
+            self.color_similarity_entry.grid(row=2, column=1, padx=5, pady=5)
+            self.color_similarity_entry.insert(0, "20")
+            
+            def toggle_color_similarity(*args):
+                if self.noise_type.get() == "similar":
+                    self.color_similarity_entry.config(state="normal")
+                else:
+                    self.color_similarity_entry.config(state="disabled")
+            
+            self.noise_type.trace("w", toggle_color_similarity)
+            toggle_color_similarity()
 
         apply_button = ttk.Button(container, text="Apply", style="Accent.TButton", command=lambda: tool["function"]())
         apply_button.grid(row=2, column=0, columnspan=2, pady=10)
@@ -295,8 +322,8 @@ class PNGToolsApp(ttk.Frame):
         for item in data:
             if item[3] != 0:
                 r, g, b = item[:3]
-                brightness = sum((r, g, b)) / (3 * 255.0)
-                new_r, new_g, new_b = colorsys.hsv_to_rgb(new_hsv[0], new_hsv[1], brightness)
+                h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
+                new_r, new_g, new_b = colorsys.hsv_to_rgb(new_hsv[0], new_hsv[1], v)
                 new_data.append((int(new_r*255), int(new_g*255), int(new_b*255), item[3]))
             else:
                 new_data.append(item)
@@ -321,6 +348,37 @@ class PNGToolsApp(ttk.Frame):
             new_data.append(item[:3] + (new_alpha,))
 
         img.putdata(new_data)
+        return img
+    
+    def add_noise(self):
+        if hasattr(self, 'original_image'):
+            noise_type = self.noise_type.get()
+            noise_level = float(self.noise_level_entry.get()) / 100
+            color_similarity = float(self.color_similarity_entry.get()) / 100 if noise_type == "similar" else None
+            self.processed_original = self.apply_noise(self.original_image, noise_type, noise_level, color_similarity)
+            preview_result = self.apply_noise(self.preview_image, noise_type, noise_level, color_similarity)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_noise(self, image, noise_type, noise_level, color_similarity):
+        img = image.convert("RGBA")
+        width, height = img.size
+        pixels = img.load()
+        
+        for _ in range(int(width * height * noise_level)):
+            x = random.randint(0, width - 1)
+            y = random.randint(0, height - 1)
+            
+            if noise_type == "random":
+                new_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
+            else:
+                r, g, b, a = pixels[x, y]
+                new_r = max(0, min(255, int(r + (random.random() * 2 - 1) * 255 * color_similarity)))
+                new_g = max(0, min(255, int(g + (random.random() * 2 - 1) * 255 * color_similarity)))
+                new_b = max(0, min(255, int(b + (random.random() * 2 - 1) * 255 * color_similarity)))
+                new_color = (new_r, new_g, new_b, a)
+            
+            pixels[x, y] = new_color
+        
         return img
 
     def save_image(self):
