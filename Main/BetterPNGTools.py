@@ -26,12 +26,9 @@ class PNGToolsApp(ttk.Frame):
             {"title": "Convert PNG to WebP", "description": "Quickly convert a PNG image to a WebP image.", "image": "image10.png", "function": self.convert_png_to_webp},
             {"title": "Convert SVG to PNG", "description": "Quickly convert an SVG file to a PNG image.", "image": "image11.png", "function": self.convert_svg_to_png},
             {"title": "Convert PNG to Base64", "description": "Quickly convert a PNG image to base64 encoding.", "image": "image12.png", "function": self.convert_png_to_base64},
-            {"title": "Convert Base64 to PNG", "description": "Quickly convert a base64-encoded image to PNG.", "image": "image13.png"},
+            {"title": "Convert Base64 to PNG", "description": "Convert a base64 encoded image to PNG format.", "image": "image13.png", "function": self.convert_base64_to_png},
             {"title": "PNG Viewer", "description": "Quickly open and view a PNG and its components in your browser.", "image": "image14.png"},
             {"title": "Preview a PNG on a Colorful Background", "description": "Quickly show how a PNG looks on various background colors.", "image": "image15.png"},
-            {"title": "Remove the Alpha Channel from PNG", "description": "Quickly remove the alpha channel and transparency from a PNG.", "image": "image16.png"},
-            {"title": "Fill the Alpha Channel in a PNG", "description": "Quickly fill the alpha channel in a PNG with a specific color.", "image": "image17.png"},
-            {"title": "Replace the Alpha Channel in a PNG", "description": "Quickly replace the alpha channel in a PNG with opaque pixels.", "image": "image18.png"},
             {"title": "Extract Alpha Channel from a PNG", "description": "Quickly extract transparent areas (alpha channel) from a PNG.", "image": "image19.png"},
             {"title": "Analyze a PNG", "description": "Quickly get detailed information about a PNG file.", "image": "image20.png"},
             {"title": "Find PNG File Size", "description": "Quickly calculate the file size of a PNG image in bytes or kilobytes.", "image": "image21.png"},
@@ -68,14 +65,28 @@ class PNGToolsApp(ttk.Frame):
         self.tools_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.tools_canvas.create_window((0, 0), window=self.tools_list, anchor=tk.NW)
         self.tools_list.bind("<Configure>", lambda e: self.tools_canvas.configure(scrollregion=self.tools_canvas.bbox("all")))
-
         self.tools_canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self.tools_canvas.bind('<Enter>', self._bind_mousewheel)
+        self.tools_canvas.bind('<Leave>', self._unbind_mousewheel)
 
         for tool in self.tools:
             self.create_tool_item(tool)
 
     def _on_mousewheel(self, event):
-        self.tools_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        if event.num == 5 or event.delta == -120:
+            self.tools_canvas.yview_scroll(1, "units")
+        if event.num == 4 or event.delta == 120:
+            self.tools_canvas.yview_scroll(-1, "units")
+
+    def _bind_mousewheel(self, event):
+        self.tools_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.tools_canvas.bind_all("<Button-4>", self._on_mousewheel)
+        self.tools_canvas.bind_all("<Button-5>", self._on_mousewheel)
+
+    def _unbind_mousewheel(self, event):
+        self.tools_canvas.unbind_all("<MouseWheel>")
+        self.tools_canvas.unbind_all("<Button-4>")
+        self.tools_canvas.unbind_all("<Button-5>")
 
     def create_tool_item(self, tool):
         frame = ttk.Frame(self.tools_list, style="Card.TFrame", padding=5)
@@ -200,7 +211,7 @@ class PNGToolsApp(ttk.Frame):
             ttk.Label(color_frame, text="Compression level:").grid(row=0, column=0, padx=5, pady=5)
             self.compression_level = ttk.Scale(color_frame, from_=0, to=9, orient=tk.HORIZONTAL)
             self.compression_level.grid(row=0, column=1, padx=5, pady=5)
-            self.compression_level.set(6)  # Default compression level
+            self.compression_level.set(6) 
 
         elif tool["title"] == "Add Noise to a PNG":
             self.noise_type = tk.StringVar(value="random")
@@ -234,9 +245,22 @@ class PNGToolsApp(ttk.Frame):
         container.grid_columnconfigure(1, weight=1)
 
     def upload_image(self, event, tool):
-        file_path = filedialog.askopenfilename(filetypes=[("PNG files", "*.png")])
+        if tool["title"] in ["Convert JPG to PNG", "Convert WebP to PNG"]:
+            file_types = [("All supported files", "*.jpg *.jpeg *.webp")]
+        elif tool["title"] == "Convert Base64 to PNG":
+            file_types = [("Text files", "*.txt")]
+        else:
+            file_types = [("PNG files", "*.png")]
+
+        file_path = filedialog.askopenfilename(filetypes=file_types)
         if file_path:
-            self.original_image = Image.open(file_path)
+            if tool["title"] == "Convert Base64 to PNG":
+                with open(file_path, 'r') as file:
+                    base64_string = file.read().strip()
+                image_data = base64.b64decode(base64_string)
+                self.original_image = Image.open(io.BytesIO(image_data))
+            else:
+                self.original_image = Image.open(file_path)
             self.preview_image = self.create_preview(self.original_image)
             self.display_image(self.preview_image, self.before_frame)
 
@@ -382,7 +406,7 @@ class PNGToolsApp(ttk.Frame):
             
             if noise_type == "random":
                 new_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
-            else:  # similar
+            else:
                 r, g, b, a = pixels[x, y]
                 new_r = max(0, min(255, int(r + (random.random() * 2 - 1) * 255 * color_similarity)))
                 new_g = max(0, min(255, int(g + (random.random() * 2 - 1) * 255 * color_similarity)))
@@ -401,9 +425,9 @@ class PNGToolsApp(ttk.Frame):
             self.display_image(preview_result, self.after_frame)
 
     def apply_compression(self, image, compression_level):
-        img = image.convert("RGB")
+        img = image.convert("RGBA")
         output = io.BytesIO()
-        img.save(output, format="PNG", optimize=True, quality=95-compression_level*10)
+        img.save(output, format="PNG", optimize=True, compress_level=compression_level)
         output.seek(0)
         return Image.open(output)
 
@@ -461,17 +485,55 @@ class PNGToolsApp(ttk.Frame):
         return image.convert("RGBA")
 
     def convert_png_to_base64(self):
-        self.current_operation = "convert_png_to_base64"
         if hasattr(self, 'original_image'):
             base64_string = self.apply_png_to_base64(self.original_image)
-            text_widget = tk.Text(self.after_frame, wrap=tk.WORD)
-            text_widget.insert(tk.END, base64_string)
-            text_widget.pack(expand=True, fill=tk.BOTH)
+            self.processed_original = base64_string
+            preview_text = base64_string[:100] + "..."
+
+            for widget in self.after_frame.winfo_children():
+                widget.destroy()
+            
+            preview_label = ttk.Label(self.after_frame, text=preview_text, wraplength=200)
+            preview_label.pack(expand=True, fill=tk.BOTH)
 
     def apply_png_to_base64(self, image):
         buffered = io.BytesIO()
         image.save(buffered, format="PNG")
         return base64.b64encode(buffered.getvalue()).decode()
+    
+    def convert_base64_to_png(self):
+        if hasattr(self, 'original_image'):
+            self.processed_original = self.apply_base64_to_png(self.original_image)
+            preview_result = self.create_preview(self.processed_original)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_base64_to_png(self, base64_string):
+        image_data = base64.b64decode(base64_string)
+        return Image.open(io.BytesIO(image_data))
+    
+    def png_viewer(self):
+        if hasattr(self, 'original_image'):
+            preview = self.create_preview(self.original_image)
+            self.display_image(preview, self.after_frame)
+            
+            view_full_button = ttk.Button(self.after_frame, text="View Full Image", command=self.view_full_image)
+            view_full_button.pack(pady=10)
+
+    def view_full_image(self):
+        if hasattr(self, 'original_image'):
+            top = tk.Toplevel(self)
+            top.title("Full Image")
+            canvas = tk.Canvas(top, width=800, height=600)
+            canvas.pack(expand=True, fill=tk.BOTH)            
+            scroll_x = ttk.Scrollbar(top, orient="horizontal", command=canvas.xview)
+            scroll_x.pack(side="bottom", fill="x")
+            scroll_y = ttk.Scrollbar(top, orient="vertical", command=canvas.yview)
+            scroll_y.pack(side="right", fill="y")            
+            canvas.configure(xscrollcommand=scroll_x.set, yscrollcommand=scroll_y.set)            
+            photo = ImageTk.PhotoImage(self.original_image)
+            canvas.create_image(0, 0, anchor="nw", image=photo)
+            canvas.image = photo            
+            canvas.configure(scrollregion=canvas.bbox("all"))
 
 
     def save_image(self):
@@ -490,6 +552,9 @@ class PNGToolsApp(ttk.Frame):
                 file_types = [("JPEG files", "*.jpg")] + file_types
             elif self.current_operation == "convert_png_to_webp":
                 default_extension = ".webp"
+            elif file_extension == '.txt' and isinstance(self.processed_original, str):
+                with open(save_path, 'w') as f:
+                    f.write(self.processed_original)
                 file_types = [("WebP files", "*.webp")] + file_types
             else:
                 default_extension = ".png"
