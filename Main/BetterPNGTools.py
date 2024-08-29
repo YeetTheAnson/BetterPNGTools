@@ -13,8 +13,8 @@ class PNGToolsApp(ttk.Frame):
         self.tools = [
             {"title": "Make a PNG Transparent", "description": "Quickly replace any color in a PNG file with transparency.", "image": "image1.png", "function": self.make_transparent},
             {"title": "Change Colors in a PNG", "description": "Quickly swap colors in a PNG image.", "image": "image2.png", "function": self.change_colors},
-            {"title": "Change PNG Color Tone", "description": "Quickly replace all colors in a PNG with a single color tone.", "image": "image3.png"},
-            {"title": "Change PNG Opacity", "description": "Quickly create a translucent or semi-transparent PNG.", "image": "image4.png"},
+            {"title": "Change PNG Color Tone", "description": "Quickly replace all colors in a PNG with a single color tone.", "image": "image3.png", "function": self.change_color_tone},
+            {"title": "Change PNG Opacity", "description": "Quickly create a translucent or semi-transparent PNG.", "image": "image4.png", "function": self.change_opacity},
             {"title": "Add Noise to a PNG", "description": "Quickly add noisy pixels (white noise) to your PNG image.", "image": "image5.png"},
             {"title": "Compress a PNG", "description": "Quickly make a PNG image smaller and reduce its size.", "image": "image6.png"},
             {"title": "Convert PNG to JPG", "description": "Quickly convert a PNG graphics file to a JPEG graphics file.", "image": "image7.png"},
@@ -162,6 +162,31 @@ class PNGToolsApp(ttk.Frame):
             self.new_color_entry.grid(row=1, column=1, padx=5, pady=5)
             ttk.Button(color_frame, text="Pick New Color", command=lambda: self.pick_color(True)).grid(row=1, column=2, padx=5, pady=5)
 
+        elif tool["title"] == "Change PNG Color Tone":
+            ttk.Label(color_frame, text="New Color Tone:").grid(row=0, column=0, padx=5, pady=5)
+            self.new_color_entry = ttk.Entry(color_frame, width=10)
+            self.new_color_entry.grid(row=0, column=1, padx=5, pady=5)
+            ttk.Button(color_frame, text="Pick New Color", command=self.pick_color).grid(row=0, column=2, padx=5, pady=5)
+
+        elif tool["title"] == "Change PNG Opacity":
+            ttk.Label(color_frame, text="Opacity %:").grid(row=0, column=0, padx=5)
+            self.percentage_entry = ttk.Entry(color_frame, width=5)
+            self.percentage_entry.grid(row=0, column=1, padx=5)
+            self.percentage_entry.insert(0, "100")
+
+        apply_button = ttk.Button(container, text="Apply", style="Accent.TButton", command=lambda: tool["function"]())
+        apply_button.grid(row=2, column=0, columnspan=2, pady=10)
+        save_button = ttk.Button(container, text="Save", style="Accent.TButton", command=self.save_image)
+        save_button.grid(row=3, column=0, columnspan=2, pady=10)
+        container.grid_columnconfigure(0, weight=1)
+        container.grid_columnconfigure(1, weight=1)
+
+        if tool["title"] == "Change Colors in a PNG":
+            ttk.Label(color_frame, text="New Color:").grid(row=1, column=0, padx=5, pady=5)
+            self.new_color_entry = ttk.Entry(color_frame, width=10)
+            self.new_color_entry.grid(row=1, column=1, padx=5, pady=5)
+            ttk.Button(color_frame, text="Pick New Color", command=lambda: self.pick_color(True)).grid(row=1, column=2, padx=5, pady=5)
+
         apply_button = ttk.Button(container, text="Apply", style="Accent.TButton", command=lambda: tool["function"]())
         apply_button.grid(row=2, column=0, columnspan=2, pady=10)
         save_button = ttk.Button(container, text="Save", style="Accent.TButton", command=self.save_image)
@@ -173,10 +198,15 @@ class PNGToolsApp(ttk.Frame):
         file_path = filedialog.askopenfilename(filetypes=[("PNG files", "*.png")])
         if file_path:
             self.original_image = Image.open(file_path)
-            self.display_image(self.original_image, self.before_frame)
+            self.preview_image = self.create_preview(self.original_image)
+            self.display_image(self.preview_image, self.before_frame)
 
+    def create_preview(self, image):
+        preview = image.copy()
+        preview.thumbnail((250, 250))
+        return preview
+    
     def display_image(self, image, frame):
-        image.thumbnail((250, 250))
         photo = ImageTk.PhotoImage(image)
         self.images.append(photo)
 
@@ -201,18 +231,18 @@ class PNGToolsApp(ttk.Frame):
         if hasattr(self, 'original_image'):
             target_color = self.color_entry.get()
             percentage = float(self.percentage_entry.get()) / 100
-            result_image = self.color_to_transparent(self.original_image, target_color, percentage)
-            self.display_image(result_image, self.after_frame)
-            self.converted_image = result_image
+            self.processed_original = self.color_to_transparent(self.original_image, target_color, percentage)
+            preview_result = self.color_to_transparent(self.preview_image, target_color, percentage)
+            self.display_image(preview_result, self.after_frame)
 
     def change_colors(self):
         if hasattr(self, 'original_image'):
             target_color = self.color_entry.get()
             new_color = self.new_color_entry.get()
             percentage = float(self.percentage_entry.get()) / 100
-            result_image = self.swap_colors(self.original_image, target_color, new_color, percentage)
-            self.display_image(result_image, self.after_frame)
-            self.converted_image = result_image
+            self.processed_original = self.swap_colors(self.original_image, target_color, new_color, percentage)
+            preview_result = self.swap_colors(self.preview_image, target_color, new_color, percentage)
+            self.display_image(preview_result, self.after_frame)
 
     def color_to_transparent(self, image, target_color, threshold):
         img = image.convert("RGBA")
@@ -246,12 +276,57 @@ class PNGToolsApp(ttk.Frame):
         return img
 
     def color_distance(self, color1, color2):
-        return sum((a - b) ** 2 for a, b in zip(color1, color2)) ** 0.5 / 441.6729559300637
+        return sum((a - b) ** 2 for a, b in zip(color1, color2)) ** 0.5 / 441.6729559300637 #Refer to github documentation for more info
+    
+    def change_color_tone(self):
+        if hasattr(self, 'original_image'):
+            new_tone = self.new_color_entry.get()
+            self.processed_original = self.apply_color_tone(self.original_image, new_tone)
+            preview_result = self.apply_color_tone(self.preview_image, new_tone)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_color_tone(self, image, new_tone):
+        img = image.convert("RGBA")
+        data = img.getdata()
+        new_data = []
+        new_rgb = tuple(int(new_tone[i:i+2], 16) for i in (1, 3, 5))
+        new_hsv = colorsys.rgb_to_hsv(*[x/255.0 for x in new_rgb])
+        
+        for item in data:
+            if item[3] != 0:
+                r, g, b = item[:3]
+                brightness = sum((r, g, b)) / (3 * 255.0)
+                new_r, new_g, new_b = colorsys.hsv_to_rgb(new_hsv[0], new_hsv[1], brightness)
+                new_data.append((int(new_r*255), int(new_g*255), int(new_b*255), item[3]))
+            else:
+                new_data.append(item)
+
+        img.putdata(new_data)
+        return img
+
+    def change_opacity(self):
+        if hasattr(self, 'original_image'):
+            opacity = float(self.percentage_entry.get()) / 100
+            self.processed_original = self.apply_opacity(self.original_image, opacity)
+            preview_result = self.apply_opacity(self.preview_image, opacity)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_opacity(self, image, opacity):
+        img = image.convert("RGBA")
+        data = img.getdata()
+        new_data = []
+        
+        for item in data:
+            new_alpha = int(item[3] * opacity)
+            new_data.append(item[:3] + (new_alpha,))
+
+        img.putdata(new_data)
+        return img
 
     def save_image(self):
         save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png")])
-        if save_path and hasattr(self, 'converted_image'):
-            self.converted_image.save(save_path)
+        if save_path and hasattr(self, 'processed_original'):
+            self.processed_original.save(save_path)
 
     def filter_tools(self, *args):
         search_term = self.search_var.get().lower()
