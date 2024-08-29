@@ -1,12 +1,14 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, colorchooser
 from PIL import Image, ImageTk
+import numpy as np
 import sv_ttk
 import os
 import colorsys
 import random
 import io
 import base64
+import math
 
 class PNGToolsApp(ttk.Frame):
     def __init__(self, parent):
@@ -24,14 +26,17 @@ class PNGToolsApp(ttk.Frame):
             {"title": "Convert JPG to PNG", "description": "Quickly convert a JPEG graphics file to a PNG graphics file.", "image": "image8.png", "function": self.convert_jpg_to_png},
             {"title": "Convert WebP to PNG", "description": "Quickly convert a WebP image to a PNG", "image": "image9.png", "function": self.convert_webp_to_png},
             {"title": "Convert PNG to WebP", "description": "Quickly convert a PNG image to a WebP image.", "image": "image10.png", "function": self.convert_png_to_webp},
-            {"title": "Convert SVG to PNG", "description": "Quickly convert an SVG file to a PNG image.", "image": "image11.png", "function": self.convert_svg_to_png},
+            {"title": "Convert SVG to PNG", "description": "Quickly convert an SVG file to a PNG image.", "image": "image11.png", "function": self.svg_to_png},
             {"title": "Convert PNG to Base64", "description": "Quickly convert a PNG image to base64 encoding.", "image": "image12.png", "function": self.convert_png_to_base64},
             {"title": "Convert Base64 to PNG", "description": "Convert a base64 encoded image to PNG format.", "image": "image13.png", "function": self.convert_base64_to_png},
-            {"title": "PNG Viewer", "description": "Quickly open and view a PNG and its components in your browser.", "image": "image14.png"},
-            {"title": "Preview a PNG on a Colorful Background", "description": "Quickly show how a PNG looks on various background colors.", "image": "image15.png"},
-            {"title": "Extract Alpha Channel from a PNG", "description": "Quickly extract transparent areas (alpha channel) from a PNG.", "image": "image19.png"},
-            {"title": "Analyze a PNG", "description": "Quickly get detailed information about a PNG file.", "image": "image20.png"},
-            {"title": "Find PNG File Size", "description": "Quickly calculate the file size of a PNG image in bytes or kilobytes.", "image": "image21.png"},
+            {"title": "PNG Viewer", "description": "View a PNG image with option to see full size.", "image": "image14.png", "function": self.png_viewer},
+            {"title": "Preview PNG on a Colorful Background", "description": "Replace transparent parts of a PNG with a specified color.", "image": "image15.png", "function": self.preview_png_on_color},
+            {"title": "Extract Alpha Channel from a PNG", "description": "Extract the alpha channel and invert the image.", "image": "image19.png", "function": self.extract_alpha_channel},
+            {"title": "Analyze a PNG", "description": "Display detailed information about a PNG file.", "image": "image20.png", "function": self.analyze_png},
+            {"title": "Find PNG File Size", "description": "Calculate the file size of a PNG image.", "image": "image21.png", "function": self.find_png_file_size},
+            {"title": "Find PNG Color Count", "description": "Quickly find the number of colors in a PNG image (and print them).", "image": "image22.png", "function": self.find_png_color_count},
+            {"title": "Rotate a PNG", "description": "Quickly rotate a PNG image by an arbitrary angle.", "image": "image23.png", "function": self.rotate_png},
+            {"title": "Skew a PNG", "description": "Quickly skew a PNG horizontally or vertically by any angle.", "image": "image24.png", "function": self.skew_png},
         ]
 
         self.images = []
@@ -206,12 +211,37 @@ class PNGToolsApp(ttk.Frame):
             self.percentage_entry = ttk.Entry(color_frame, width=5)
             self.percentage_entry.grid(row=0, column=1, padx=5)
             self.percentage_entry.insert(0, "100")
+        elif tool["title"] == "Rotate a PNG":
+            ttk.Label(color_frame, text="Rotation angle:").grid(row=0, column=0, padx=5)
+            self.rotation_entry = ttk.Entry(color_frame, width=5)
+            self.rotation_entry.grid(row=0, column=1, padx=5)
+            self.rotation_entry.insert(0, "0")
 
+        elif tool["title"] == "Skew a PNG":
+            self.horizontal_var = tk.BooleanVar()
+            self.vertical_var = tk.BooleanVar()
+            ttk.Checkbutton(color_frame, text="Skew horizontally", variable=self.horizontal_var, command=self.toggle_h_entry).grid(row=0, column=0, padx=5)
+            ttk.Checkbutton(color_frame, text="Skew vertically", variable=self.vertical_var, command=self.toggle_v_entry).grid(row=1, column=0, padx=5)
+            self.h_angle_entry = ttk.Entry(color_frame, width=5, state="disabled")
+            self.h_angle_entry.grid(row=0, column=1, padx=5)
+            self.v_angle_entry = ttk.Entry(color_frame, width=5, state="disabled")
+            self.v_angle_entry.grid(row=1, column=1, padx=5)
+    
         elif tool["title"] == "Compress a PNG":
             ttk.Label(color_frame, text="Compression level:").grid(row=0, column=0, padx=5, pady=5)
             self.compression_level = ttk.Scale(color_frame, from_=0, to=9, orient=tk.HORIZONTAL)
             self.compression_level.grid(row=0, column=1, padx=5, pady=5)
             self.compression_level.set(6) 
+
+        elif tool["title"] in ["Preview PNG on a Colorful Background", "Extract Alpha Channel from a PNG"]:
+            ttk.Label(color_frame, text="Color:").grid(row=0, column=0, padx=5)
+            self.color_entry = ttk.Entry(color_frame, width=10)
+            self.color_entry.grid(row=0, column=1, padx=5)
+            ttk.Button(color_frame, text="Pick Color", command=self.pick_color).grid(row=0, column=2, padx=5)
+
+        elif tool["title"] not in ["PNG Viewer", "Analyze a PNG", "Find PNG File Size"]:
+            apply_button = ttk.Button(container, text="Apply", style="Accent.TButton", command=lambda: tool["function"]())
+            apply_button.grid(row=2, column=0, columnspan=2, pady=10)
 
         elif tool["title"] == "Add Noise to a PNG":
             self.noise_type = tk.StringVar(value="random")
@@ -233,7 +263,7 @@ class PNGToolsApp(ttk.Frame):
                     self.color_similarity_entry.config(state="normal")
                 else:
                     self.color_similarity_entry.config(state="disabled")
-            
+
             self.noise_type.trace("w", toggle_color_similarity)
             toggle_color_similarity()
 
@@ -243,12 +273,23 @@ class PNGToolsApp(ttk.Frame):
         save_button.grid(row=3, column=0, columnspan=2, pady=10)
         container.grid_columnconfigure(0, weight=1)
         container.grid_columnconfigure(1, weight=1)
+    def toggle_h_entry(self):
+                self.h_angle_entry.config(state="normal" if self.horizontal_var.get() else "disabled")
 
+    def toggle_v_entry(self):
+        self.v_angle_entry.config(state="normal" if self.vertical_var.get() else "disabled")
+
+        
     def upload_image(self, event, tool):
-        if tool["title"] in ["Convert JPG to PNG", "Convert WebP to PNG"]:
-            file_types = [("All supported files", "*.jpg *.jpeg *.webp")]
+        file_types = [("All supported files", "*.*")]
+        if tool["title"] == "Convert JPG to PNG":
+            file_types = [("JPEG files", "*.jpg *.jpeg")]
+        elif tool["title"] == "Convert WebP to PNG":
+            file_types = [("WebP files", "*.webp")]
         elif tool["title"] == "Convert Base64 to PNG":
             file_types = [("Text files", "*.txt")]
+        elif tool["title"] == "Convert SVG to PNG":
+            file_types = [("SVG files", "*.svg")]
         else:
             file_types = [("PNG files", "*.png")]
 
@@ -259,10 +300,13 @@ class PNGToolsApp(ttk.Frame):
                     base64_string = file.read().strip()
                 image_data = base64.b64decode(base64_string)
                 self.original_image = Image.open(io.BytesIO(image_data))
+            elif tool["title"] == "Convert SVG to PNG":
+                self.original_image = self.svg_to_png(file_path)
             else:
                 self.original_image = Image.open(file_path)
             self.preview_image = self.create_preview(self.original_image)
             self.display_image(self.preview_image, self.before_frame)
+
 
     def create_preview(self, image):
         preview = image.copy()
@@ -474,17 +518,16 @@ class PNGToolsApp(ttk.Frame):
         output.seek(0)
         return Image.open(output)
 
-    def convert_svg_to_png(self):
-        self.current_operation = "convert_svg_to_png"
-        if hasattr(self, 'original_image'):
-            self.processed_original = self.apply_svg_to_png(self.original_image)
-            preview_result = self.apply_svg_to_png(self.preview_image)
-            self.display_image(preview_result, self.after_frame)
+    def svg_to_png(self, svg_path):
+        from cairosvg import svg2png
+        png_data = svg2png(url=svg_path)
+        return Image.open(io.BytesIO(png_data))
 
     def apply_svg_to_png(self, image):
         return image.convert("RGBA")
 
     def convert_png_to_base64(self):
+        self.current_operation = "convert_png_to_base64"
         if hasattr(self, 'original_image'):
             base64_string = self.apply_png_to_base64(self.original_image)
             self.processed_original = base64_string
@@ -535,6 +578,165 @@ class PNGToolsApp(ttk.Frame):
             canvas.image = photo            
             canvas.configure(scrollregion=canvas.bbox("all"))
 
+    def preview_png_on_color(self):
+        if hasattr(self, 'original_image'):
+            color = self.color_entry.get()
+            self.processed_original = self.apply_color_background(self.original_image, color)
+            preview_result = self.create_preview(self.processed_original)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_color_background(self, image, color):
+        if image.mode in ('RGBA', 'LA') or (image.mode == 'P' and 'transparency' in image.info):
+            bg = Image.new('RGBA', image.size, color)
+            bg.paste(image, (0, 0), image)
+            return bg
+        else:
+            return image
+        
+    def extract_alpha_channel(self):
+        if hasattr(self, 'original_image'):
+            color = self.color_entry.get()
+            self.processed_original = self.apply_alpha_extraction(self.original_image, color)
+            preview_result = self.create_preview(self.processed_original)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_alpha_extraction(self, image, color):
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        data = np.array(image)
+        r, g, b = [int(color[i:i+2], 16) for i in (1, 3, 5)]
+        
+        alpha = data[:, :, 3]
+        rgb = np.zeros_like(data[:, :, :3])
+        rgb[alpha == 0] = [r, g, b]
+        rgb[alpha > 0] = [0, 0, 0]
+        
+        extracted = np.concatenate((rgb, np.expand_dims(255 - alpha, axis=2)), axis=2)
+        return Image.fromarray(extracted.astype('uint8'), 'RGBA')
+    
+    def analyze_png(self):
+        if hasattr(self, 'original_image'):
+            analysis = self.apply_png_analysis(self.original_image)
+            self.processed_original = analysis
+            
+            for widget in self.after_frame.winfo_children():
+                widget.destroy()
+            
+            text_widget = tk.Text(self.after_frame, wrap=tk.WORD, height=20)
+            text_widget.insert(tk.END, analysis)
+            text_widget.pack(expand=True, fill=tk.BOTH)
+
+    def apply_png_analysis(self, image):
+        analysis = f"Image Mode: {image.mode}\n"
+        analysis += f"Image Size: {image.size}\n"
+        analysis += f"Image Format: {image.format}\n"
+        
+        if 'dpi' in image.info:
+            analysis += f"DPI: {image.info['dpi']}\n"
+        
+        if 'icc_profile' in image.info:
+            analysis += "ICC Profile: Present\n"
+        
+        if 'exif' in image.info:
+            analysis += "EXIF Data: Present\n"
+        
+        return analysis
+    
+    def find_png_file_size(self):
+        if hasattr(self, 'original_image'):
+            file_size = self.apply_file_size_calculation(self.original_image)
+            self.processed_original = file_size
+            
+            for widget in self.after_frame.winfo_children():
+                widget.destroy()
+            
+            size_label = ttk.Label(self.after_frame, text=file_size)
+            size_label.pack(expand=True)
+
+    def apply_file_size_calculation(self, image):
+        temp_buffer = io.BytesIO()
+        image.save(temp_buffer, format="PNG")
+        size_bytes = temp_buffer.getbuffer().nbytes
+        
+        if size_bytes < 1024:
+            return f"{size_bytes} bytes"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.2f} KB"
+        else:
+            return f"{size_bytes / (1024 * 1024):.2f} MB"
+        
+    def find_png_color_count(self):
+        if hasattr(self, 'original_image'):
+            color_count = self.apply_color_count(self.original_image)
+            self.processed_original = color_count
+            
+            for widget in self.after_frame.winfo_children():
+                widget.destroy()
+            
+            text_widget = tk.Text(self.after_frame, wrap=tk.WORD, height=20)
+            text_widget.insert(tk.END, color_count)
+            text_widget.pack(expand=True, fill=tk.BOTH)
+
+    def apply_color_count(self, image):
+        img_data = np.array(image)
+        unique_colors = np.unique(img_data.reshape(-1, img_data.shape[-1]), axis=0)
+        total_colors = len(unique_colors)
+        
+        grayscale = np.all(unique_colors[:, 0] == unique_colors[:, 1], axis=1) & np.all(unique_colors[:, 1] == unique_colors[:, 2], axis=1)
+        grayscale_count = np.sum(grayscale)
+        
+        if img_data.shape[-1] == 4:
+            transparent = unique_colors[:, 3] == 0
+            translucent = (unique_colors[:, 3] > 0) & (unique_colors[:, 3] < 255)
+            opaque = unique_colors[:, 3] == 255
+            transparent_count = np.sum(transparent)
+            translucent_count = np.sum(translucent)
+            opaque_count = np.sum(opaque)
+        else:
+            transparent_count = translucent_count = 0
+            opaque_count = total_colors
+        
+        result = f"Unique Color Count:\n-------------------\n"
+        result += f"Unique colors: {total_colors} (100%)\n"
+        result += f"Unique grayscale colors: {grayscale_count} ({grayscale_count/total_colors:.2%})\n"
+        result += f"Unique transparent colors: {transparent_count} ({transparent_count/total_colors:.2%})\n"
+        result += f"Unique translucent colors: {translucent_count} ({translucent_count/total_colors:.2%})\n"
+        result += f"Unique opaque colors: {opaque_count} ({opaque_count/total_colors:.2%})"
+        
+        return result
+
+    def rotate_png(self):
+        if hasattr(self, 'original_image'):
+            angle = float(self.rotation_entry.get())
+            self.processed_original = self.apply_rotation(self.original_image, angle)
+            preview_result = self.apply_rotation(self.preview_image, angle)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_rotation(self, image, angle):
+        return image.rotate(angle, resample=Image.BICUBIC, expand=True)
+
+    def skew_png(self):
+        if hasattr(self, 'original_image'):
+            horizontal = self.horizontal_var.get()
+            vertical = self.vertical_var.get()
+            h_angle = float(self.h_angle_entry.get()) if horizontal else 0
+            v_angle = float(self.v_angle_entry.get()) if vertical else 0
+            self.processed_original = self.apply_skew(self.original_image, h_angle, v_angle)
+            preview_result = self.apply_skew(self.preview_image, h_angle, v_angle)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_skew(self, image, h_angle, v_angle):
+        width, height = image.size
+        max_skew = max(abs(h_angle), abs(v_angle))
+        new_width = int(width + height * math.tan(math.radians(abs(h_angle))))
+        new_height = int(height + width * math.tan(math.radians(abs(v_angle))))
+        
+        skew_matrix = [1, math.tan(math.radians(h_angle)), 0,
+                    math.tan(math.radians(v_angle)), 1, 0]
+        
+        return image.transform((new_width, new_height), Image.AFFINE, skew_matrix, Image.BICUBIC)
+
 
     def save_image(self):
         if not hasattr(self, 'processed_original'):
@@ -544,18 +746,18 @@ class PNGToolsApp(ttk.Frame):
             ("PNG files", "*.png"),
             ("JPEG files", "*.jpg"),
             ("WebP files", "*.webp"),
+            ("Text files", "*.txt"),
         ]
         
         if hasattr(self, 'current_operation'):
             if self.current_operation == "convert_png_to_jpg":
                 default_extension = ".jpg"
-                file_types = [("JPEG files", "*.jpg")] + file_types
+            elif self.current_operation in ["convert_jpg_to_png", "convert_webp_to_png", "convert_svg_to_png"]:
+                default_extension = ".png"
+            elif self.current_operation == "convert_png_to_base64":
+                default_extension = ".txt"
             elif self.current_operation == "convert_png_to_webp":
                 default_extension = ".webp"
-            elif file_extension == '.txt' and isinstance(self.processed_original, str):
-                with open(save_path, 'w') as f:
-                    f.write(self.processed_original)
-                file_types = [("WebP files", "*.webp")] + file_types
             else:
                 default_extension = ".png"
         else:
@@ -572,6 +774,12 @@ class PNGToolsApp(ttk.Frame):
                 self.processed_original.convert("RGB").save(save_path, format="JPEG")
             elif file_extension == '.webp':
                 self.processed_original.save(save_path, format="WebP")
+            elif file_extension == '.txt':
+                if isinstance(self.processed_original, str):
+                    with open(save_path, 'w') as f:
+                        f.write(self.processed_original)
+                else:
+                    self.processed_original.save(save_path, format="PNG")
 
     def filter_tools(self, *args):
         search_term = self.search_var.get().lower()
