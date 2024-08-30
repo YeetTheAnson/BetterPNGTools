@@ -2,14 +2,20 @@ import tkinter as tk
 from tkinter import ttk, filedialog, colorchooser
 from PIL import Image, ImageTk
 from PIL import ImageDraw, ImageFont, ImageFilter
+import threading
 import numpy as np
 import sv_ttk
 import os
+import cv2
 import colorsys
 import random
 import io
 import base64
 import math
+import time
+import pygame
+from ffpyplayer.player import MediaPlayer
+
 
 class PNGToolsApp(ttk.Frame):
     def __init__(self, parent):
@@ -294,7 +300,7 @@ class PNGToolsApp(ttk.Frame):
             self.blur_radius_entry.grid(row=0, column=1, padx=5, pady=5)
             self.blur_radius_entry.insert(0, "5")
 
-        elif tool["title"] not in ["PNG Viewer", "Analyze a PNG", "Find PNG File Size"]:
+        elif tool["title"] not in ["PNG Viewer", "Analyze a PNG", "Find PNG File Size", "Add Noise to a PNG"]:
             apply_button = ttk.Button(container, text="Apply", style="Accent.TButton", command=lambda: tool["function"]())
             apply_button.grid(row=2, column=0, columnspan=2, pady=10)
 
@@ -895,12 +901,55 @@ class PNGToolsApp(ttk.Frame):
 
     def filter_tools(self, *args):
         search_term = self.search_var.get().lower()
+        if search_term == "bartosz":
+            self.play_bartosz_video()
         for widget in self.tools_list.winfo_children():
             widget.destroy()
 
         for tool in self.tools:
             if search_term in tool["title"].lower() or search_term in tool["description"].lower():
                 self.create_tool_item(tool)
+
+    def play_bartosz_video(self):
+        video_path = "bartosz.mp4"
+        pygame.init()
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        clock = pygame.time.Clock()
+        cap = cv2.VideoCapture(video_path)
+        player = MediaPlayer(video_path)
+
+        def stop_video():
+            time.sleep(20)
+            cap.release()
+            player.close_player()
+            pygame.quit()
+
+        stop_thread = threading.Thread(target=stop_video)
+        stop_thread.start()
+        running = True
+        while running:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = pygame.surfarray.make_surface(frame)
+            screen.blit(frame, (0, 0))
+            pygame.display.update()
+            _, audio_frame = player.get_frame()
+
+            if audio_frame is not None:
+                pass
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+            clock.tick(30)
+        cap.release()
+        player.close_player()
+        pygame.quit()
+
 
 def main():
     root = tk.Tk()
@@ -917,16 +966,7 @@ def main():
     root.option_add("*Dotted.TFrame.highlightthickness", 1)
     root.option_add("*Dotted.TFrame.bd", 0)
 
-    def apply_rounded_corners(widget):
-        widget.update_idletasks()
-        width = widget.winfo_width()
-        height = widget.winfo_height()
-        shape = f"M0,0 L{width},0 L{width},{height} L0,{height} Z M10,1 L1,10 L1,{height-10} L10,{height-1} L{width-10},{height-1} L{width-1},{height-10} L{width-1},10 L{width-10},1 Z"
-        widget.create_polygon(shape, outline="grey", fill="", width=2, stipple="gray50")
-
     app = PNGToolsApp(root)
-
-    root.after(100, lambda: apply_rounded_corners(app.tool_details_frame.winfo_children()[0]))
 
     root.mainloop()
 
