@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, colorchooser
 from PIL import Image, ImageTk
+from PIL import ImageDraw, ImageFont
 import numpy as np
 import sv_ttk
 import os
@@ -37,6 +38,11 @@ class PNGToolsApp(ttk.Frame):
             {"title": "Find PNG Color Count", "description": "Quickly find the number of colors in a PNG image (and print them).", "image": "image22.png", "function": self.find_png_color_count},
             {"title": "Rotate a PNG", "description": "Quickly rotate a PNG image by an arbitrary angle.", "image": "image23.png", "function": self.rotate_png},
             {"title": "Skew a PNG", "description": "Quickly skew a PNG horizontally or vertically by any angle.", "image": "image24.png", "function": self.skew_png},
+            {"title": "Mirror a PNG", "description": "Quickly create a mirror version of the given PNG.", "image": "image25.png", "function": self.mirror_png},
+            {"title": "Add Text to a PNG Image", "description": "Quickly add text (label, caption) to a PNG picture.", "image": "image26.png", "function": self.add_text_to_png},
+            {"title": "Pixelate a PNG", "description": "Quickly pixelate a PNG image.", "image": "image27.png", "function": self.pixelate_png},
+            {"title": "Blur a PNG", "description": "Quickly blur an area of a PNG image.", "image": "image28.png", "function": self.blur_png},
+
         ]
 
         self.images = []
@@ -736,6 +742,63 @@ class PNGToolsApp(ttk.Frame):
                     math.tan(math.radians(v_angle)), 1, 0]
         
         return image.transform((new_width, new_height), Image.AFFINE, skew_matrix, Image.BICUBIC)
+    
+    def mirror_png(self):
+        if hasattr(self, 'original_image'):
+            flip_horizontal = self.flip_horizontal_var.get()
+            flip_vertical = self.flip_vertical_var.get()
+            self.processed_original = self.apply_mirror(self.original_image, flip_horizontal, flip_vertical)
+            preview_result = self.apply_mirror(self.preview_image, flip_horizontal, flip_vertical)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_mirror(self, image, flip_horizontal, flip_vertical):
+        if flip_horizontal:
+            image = image.transpose(Image.FLIP_LEFT_RIGHT)
+        if flip_vertical:
+            image = image.transpose(Image.FLIP_TOP_BOTTOM)
+        return image
+
+    def add_text_to_png(self):
+        if hasattr(self, 'original_image'):
+            text = self.text_input.get()
+            color = self.text_color_entry.get()
+            font_size = int(self.font_size_entry.get())
+            bold = self.bold_var.get()
+            italic = self.italic_var.get()
+            x = int(self.x_position_entry.get())
+            y = int(self.y_position_entry.get())
+            self.processed_original = self.apply_text_to_png(self.original_image, text, color, font_size, bold, italic, x, y)
+            preview_result = self.apply_text_to_png(self.preview_image, text, color, font_size, bold, italic, x, y)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_text_to_png(self, image, text, color, font_size, bold, italic, x, y):
+        draw = ImageDraw.Draw(image)
+        font_style = "bold" if bold else "regular"
+        font_style += " italic" if italic else ""
+        font = ImageFont.truetype("arial.ttf", font_size, encoding="unic")
+        draw.text((x, y), text, font=font, fill=color)
+        return image
+
+    def pixelate_png(self):
+        if hasattr(self, 'original_image'):
+            pixel_size = int(self.pixel_size_entry.get())
+            self.processed_original = self.apply_pixelation(self.original_image, pixel_size)
+            preview_result = self.apply_pixelation(self.preview_image, pixel_size)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_pixelation(self, image, pixel_size):
+        small = image.resize((image.width // pixel_size, image.height // pixel_size), Image.NEAREST)
+        return small.resize(image.size, Image.NEAREST)
+
+    def blur_png(self):
+        if hasattr(self, 'original_image'):
+            blur_radius = int(self.blur_radius_entry.get())
+            self.processed_original = self.apply_blur(self.original_image, blur_radius)
+            preview_result = self.apply_blur(self.preview_image, blur_radius)
+            self.display_image(preview_result, self.after_frame)
+
+    def apply_blur(self, image, blur_radius):
+        return image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
 
     def save_image(self):
