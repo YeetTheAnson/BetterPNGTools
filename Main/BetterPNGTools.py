@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, colorchooser
 from PIL import Image, ImageTk
-from PIL import ImageDraw, ImageFont
+from PIL import ImageDraw, ImageFont, ImageFilter
 import numpy as np
 import sv_ttk
 import os
@@ -32,16 +32,16 @@ class PNGToolsApp(ttk.Frame):
             {"title": "Convert Base64 to PNG", "description": "Convert a base64 encoded image to PNG format.", "image": "image13.png", "function": self.convert_base64_to_png},
             {"title": "PNG Viewer", "description": "View a PNG image with option to see full size.", "image": "image14.png", "function": self.png_viewer},
             {"title": "Preview PNG on a Colorful Background", "description": "Replace transparent parts of a PNG with a specified color.", "image": "image15.png", "function": self.preview_png_on_color},
-            {"title": "Extract Alpha Channel from a PNG", "description": "Extract the alpha channel and invert the image.", "image": "image19.png", "function": self.extract_alpha_channel},
-            {"title": "Analyze a PNG", "description": "Display detailed information about a PNG file.", "image": "image20.png", "function": self.analyze_png},
-            {"title": "Find PNG File Size", "description": "Calculate the file size of a PNG image.", "image": "image21.png", "function": self.find_png_file_size},
-            {"title": "Find PNG Color Count", "description": "Quickly find the number of colors in a PNG image (and print them).", "image": "image22.png", "function": self.find_png_color_count},
-            {"title": "Rotate a PNG", "description": "Quickly rotate a PNG image by an arbitrary angle.", "image": "image23.png", "function": self.rotate_png},
-            {"title": "Skew a PNG", "description": "Quickly skew a PNG horizontally or vertically by any angle.", "image": "image24.png", "function": self.skew_png},
-            {"title": "Mirror a PNG", "description": "Quickly create a mirror version of the given PNG.", "image": "image25.png", "function": self.mirror_png},
-            {"title": "Add Text to a PNG Image", "description": "Quickly add text (label, caption) to a PNG picture.", "image": "image26.png", "function": self.add_text_to_png},
-            {"title": "Pixelate a PNG", "description": "Quickly pixelate a PNG image.", "image": "image27.png", "function": self.pixelate_png},
-            {"title": "Blur a PNG", "description": "Quickly blur an area of a PNG image.", "image": "image28.png", "function": self.blur_png},
+            {"title": "Extract Alpha Channel from a PNG", "description": "Extract the alpha channel and invert the image.", "image": "image16.png", "function": self.extract_alpha_channel},
+            {"title": "Analyze a PNG", "description": "Display detailed information about a PNG file.", "image": "image17.png", "function": self.analyze_png},
+            {"title": "Find PNG File Size", "description": "Calculate the file size of a PNG image.", "image": "image18.png", "function": self.find_png_file_size},
+            {"title": "Find PNG Color Count", "description": "Quickly find the number of colors in a PNG image (and print them).", "image": "image19.png", "function": self.find_png_color_count},
+            {"title": "Rotate a PNG", "description": "Quickly rotate a PNG image by an arbitrary angle.", "image": "image20.png", "function": self.rotate_png},
+            {"title": "Skew a PNG", "description": "Quickly skew a PNG horizontally or vertically by any angle.", "image": "image21.png", "function": self.skew_png},
+            {"title": "Mirror a PNG", "description": "Quickly create a mirror version of the given PNG.", "image": "image22.png", "function": self.mirror_png},
+            {"title": "Add Text to a PNG Image", "description": "Quickly add text (label, caption) to a PNG picture.", "image": "image23.png", "function": self.add_text_to_png},
+            {"title": "Pixelate a PNG", "description": "Quickly pixelate a PNG image.", "image": "image24.png", "function": self.pixelate_png},
+            {"title": "Blur a PNG", "description": "Quickly blur an area of a PNG image.", "image": "image25.png", "function": self.blur_png},
 
         ]
 
@@ -245,6 +245,55 @@ class PNGToolsApp(ttk.Frame):
             self.color_entry.grid(row=0, column=1, padx=5)
             ttk.Button(color_frame, text="Pick Color", command=self.pick_color).grid(row=0, column=2, padx=5)
 
+
+        elif tool["title"] == "Mirror a PNG":
+            self.flip_horizontal_var = tk.BooleanVar()
+            self.flip_vertical_var = tk.BooleanVar()
+            ttk.Checkbutton(color_frame, text="Flip Horizontally", variable=self.flip_horizontal_var).grid(row=0, column=0, padx=5, pady=5)
+            ttk.Checkbutton(color_frame, text="Flip Vertically", variable=self.flip_vertical_var).grid(row=0, column=1, padx=5, pady=5)
+
+        elif tool["title"] == "Add Text to a PNG Image":
+            ttk.Label(color_frame, text="Text:").grid(row=0, column=0, padx=5, pady=5)
+            self.text_input = ttk.Entry(color_frame, width=20)
+            self.text_input.grid(row=0, column=1, padx=5, pady=5)
+            
+            ttk.Label(color_frame, text="Text Color:").grid(row=1, column=0, padx=5, pady=5)
+            self.color_entry = ttk.Entry(color_frame, width=10)
+            self.color_entry.grid(row=1, column=1, padx=5, pady=5)
+            ttk.Button(color_frame, text="Pick Color", command=self.pick_color).grid(row=1, column=2, padx=5, pady=5)
+            
+            ttk.Label(color_frame, text="Font Size:").grid(row=2, column=0, padx=5, pady=5)
+            self.font_size_entry = ttk.Entry(color_frame, width=5)
+            self.font_size_entry.grid(row=2, column=1, padx=5, pady=5)
+            self.font_size_entry.insert(0, "24")
+            
+            self.bold_var = tk.BooleanVar()
+            self.italic_var = tk.BooleanVar()
+            ttk.Checkbutton(color_frame, text="Bold", variable=self.bold_var).grid(row=3, column=0, padx=5, pady=5)
+            ttk.Checkbutton(color_frame, text="Italic", variable=self.italic_var).grid(row=3, column=1, padx=5, pady=5)
+            
+            ttk.Label(color_frame, text="X Position:").grid(row=4, column=0, padx=5, pady=5)
+            self.x_position_entry = ttk.Entry(color_frame, width=5)
+            self.x_position_entry.grid(row=4, column=1, padx=5, pady=5)
+            self.x_position_entry.insert(0, "0")
+            
+            ttk.Label(color_frame, text="Y Position:").grid(row=5, column=0, padx=5, pady=5)
+            self.y_position_entry = ttk.Entry(color_frame, width=5)
+            self.y_position_entry.grid(row=5, column=1, padx=5, pady=5)
+            self.y_position_entry.insert(0, "0")
+
+        elif tool["title"] == "Pixelate a PNG":
+            ttk.Label(color_frame, text="Pixel Size:").grid(row=0, column=0, padx=5, pady=5)
+            self.pixel_size_entry = ttk.Entry(color_frame, width=5)
+            self.pixel_size_entry.grid(row=0, column=1, padx=5, pady=5)
+            self.pixel_size_entry.insert(0, "10")
+
+        elif tool["title"] == "Blur a PNG":
+            ttk.Label(color_frame, text="Blur Radius:").grid(row=0, column=0, padx=5, pady=5)
+            self.blur_radius_entry = ttk.Entry(color_frame, width=5)
+            self.blur_radius_entry.grid(row=0, column=1, padx=5, pady=5)
+            self.blur_radius_entry.insert(0, "5")
+
         elif tool["title"] not in ["PNG Viewer", "Analyze a PNG", "Find PNG File Size"]:
             apply_button = ttk.Button(container, text="Apply", style="Accent.TButton", command=lambda: tool["function"]())
             apply_button.grid(row=2, column=0, columnspan=2, pady=10)
@@ -253,17 +302,17 @@ class PNGToolsApp(ttk.Frame):
             self.noise_type = tk.StringVar(value="random")
             ttk.Radiobutton(color_frame, text="Random color noise", variable=self.noise_type, value="random").grid(row=0, column=0, padx=5, pady=5)
             ttk.Radiobutton(color_frame, text="Similar pixel noise", variable=self.noise_type, value="similar").grid(row=0, column=1, padx=5, pady=5)
-            
+
             ttk.Label(color_frame, text="Noise level %:").grid(row=1, column=0, padx=5, pady=5)
             self.noise_level_entry = ttk.Entry(color_frame, width=5)
             self.noise_level_entry.grid(row=1, column=1, padx=5, pady=5)
             self.noise_level_entry.insert(0, "10")
-            
+
             ttk.Label(color_frame, text="Color similarity %:").grid(row=2, column=0, padx=5, pady=5)
             self.color_similarity_entry = ttk.Entry(color_frame, width=5)
             self.color_similarity_entry.grid(row=2, column=1, padx=5, pady=5)
             self.color_similarity_entry.insert(0, "20")
-            
+
             def toggle_color_similarity(*args):
                 if self.noise_type.get() == "similar":
                     self.color_similarity_entry.config(state="normal")
@@ -761,7 +810,7 @@ class PNGToolsApp(ttk.Frame):
     def add_text_to_png(self):
         if hasattr(self, 'original_image'):
             text = self.text_input.get()
-            color = self.text_color_entry.get()
+            color = self.color_entry.get()
             font_size = int(self.font_size_entry.get())
             bold = self.bold_var.get()
             italic = self.italic_var.get()
