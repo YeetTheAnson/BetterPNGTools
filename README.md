@@ -27,8 +27,9 @@ https://github.com/user-attachments/assets/c9ec7ea0-3fd9-4a17-89d0-c2cec79ddc44
 
 1. Type ```git clone https://github.com/YeetTheAnson/BetterPNGTools``` into CMD
 2. Type ```pip install pillow numpy sv_ttk opencv-python pygame ffpyplayer``` into CMD
-3. Type ```cd Main``` into CMD
-4. Type ```python BetterPNGTools.py``` into CMD to launch the script
+3. Type ```cd BetterPNGTools``` into CMD
+4. Type ```cd Main``` into CMD
+5. Type ```python BetterPNGTools.py``` into CMD to launch the script
 
 
 ## Reason for not providing executable
